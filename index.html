@@ -396,10 +396,10 @@
 
                 try {
                     // --- IMPORTANT: PASTE YOUR API KEY HERE ---
-                    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+                    const apiKey = "AIzaSyDMYn_5QYXjUHTo1AqQR6lACW0afro1Dz8";
                     // -----------------------------------------
 
-                    if (apiKey === import.meta.env.VITE_GEMINI_API_KEY || !apiKey) {
+                    if (apiKey === "AIzaSyDMYn_5QYXjUHTo1AqQR6lACW0afro1Dz8" || !apiKey) {
                         throw new Error("API Key is missing. Please add your Gemini API key.");
                     }
 
@@ -412,15 +412,18 @@
                     });
 
                     if (!response.ok) {
+                        const errorBody = await response.json();
+                        console.error("API Error Body:", errorBody);
                         throw new Error(`API Error: ${response.statusText}`);
                     }
 
                     const result = await response.json();
 
-                    if (result.candidates && result.candidates[0].content.parts[0].text) {
+                    if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts[0].text) {
                         const parsedRecipes = JSON.parse(result.candidates[0].content.parts[0].text);
                         renderRecipes(parsedRecipes);
                     } else {
+                        console.error("Unexpected API response structure:", result);
                         throw new Error("Could not parse recipes from AI response.");
                     }
                 } catch (err) {
