@@ -395,7 +395,14 @@
                 };
 
                 try {
-                    const apiKey = "";
+                    // --- IMPORTANT: PASTE YOUR API KEY HERE ---
+                    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+                    // -----------------------------------------
+
+                    if (apiKey === import.meta.env.VITE_GEMINI_API_KEY || !apiKey) {
+                        throw new Error("API Key is missing. Please add your Gemini API key.");
+                    }
+
                     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
                     
                     const response = await fetch(apiUrl, {
@@ -418,7 +425,7 @@
                     }
                 } catch (err) {
                     console.error("Error generating recipes:", err);
-                    recipesContainer.innerHTML = `<p class="text-center text-red-500">Sorry, we couldn't generate recipes. Please try again.</p>`;
+                    recipesContainer.innerHTML = `<p class="text-center text-red-500">${err.message}</p>`;
                 } finally {
                     setLoadingState(false);
                 }
