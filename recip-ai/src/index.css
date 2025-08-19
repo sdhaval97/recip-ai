@@ -1,4 +1,0 @@
-/* Injects Tailwind's base styles, component classes, and utility classes into your app */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
