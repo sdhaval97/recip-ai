@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { ChefHat, List, UtensilsCrossed, ShoppingCart } from 'lucide-react';
+import { ChefHat, List, UtensilsCrossed, ShoppingCart, PlusCircle, Trash2, Sparkles, RefreshCw, ArrowLeft } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
-// Import the page components
-import InventoryPage from './pages/InventoryPage';
-import RecipePage from './pages/RecipePage';
-import ShoppingListPage from './pages/ShoppingListPage';
+// Import the page components with the correct file extension
+import InventoryPage from './pages/InventoryPage.jsx';
+import RecipePage from './pages/RecipePage.jsx';
+import ShoppingListPage from './pages/ShoppingListPage.jsx';
 
 
 // --- Main App Component ---
