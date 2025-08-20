@@ -18,7 +18,7 @@ export default function RecipePage({ inventory, onCookRecipe }) {
     setRecipes([]);
 
     const ingredientsList = inventory.map(item => `${item.quantity} ${item.unit || ''} of ${item.name}`).join(', ');
-    const prompt = `You are a helpful chef. Based on the following ingredients I have: ${ingredientsList}, generate 3 unique ${preference} recipe ideas portioned for one person. Assume I have basic pantry staples like salt, pepper, and oil. For each recipe, provide: 1. A 'recipeName' (string). 2. An 'ingredients' list (array of objects with name, quantity, unit) using ONLY the main ingredients from my list. 3. A single string for 'instructions' with concise, step-by-step cooking directions, separating each step with '\\n'.`;
+    const prompt = `You are a helpful chef. Based on the following ingredients I have: ${ingredientsList}, generate 3 unique ${preference} recipe ideas portioned for one person. Assume I have basic pantry staples like salt, pepper, and oil. For each recipe, provide: 1. A 'recipeName' (string). 2. An 'ingredients' list (array of objects with name, quantity, unit) using ONLY the main ingredients from my list. 3. A single string for 'instructions' with concise, step-by-step cooking directions, separating each step with a period (.).`;
 
     const payload = {
       contents: [{ parts: [{ text: prompt }] }],
@@ -103,8 +103,8 @@ export default function RecipePage({ inventory, onCookRecipe }) {
           <div>
             <h4 className="text-lg font-semibold text-gray-800 mb-2">Instructions:</h4>
             <ul className="list-disc list-inside bg-gray-50 p-4 rounded-md space-y-2">
-              {selectedRecipe.instructions.split('\n').filter(step => step.trim() !== '').map((step, i) => (
-                <li key={i}>{step}</li>
+              {selectedRecipe.instructions.split('.').filter(sentence => sentence.trim()).map((sentence, i) => (
+                <li key={i}>{sentence.trim()}.</li>
               ))}
             </ul>
           </div>
