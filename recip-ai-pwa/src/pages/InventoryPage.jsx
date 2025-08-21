@@ -8,60 +8,58 @@ export default function InventoryPage({ inventory, onAddItem, onDeleteItem }) {
   const [error, setError] = useState('');
   const [isValidating, setIsValidating] = useState(false);
 
-  const validateInput = async () => {
-    const trimmedItemName = itemName.trim().toLowerCase();
-
-    // 1. Check for basic length and character requirements first
-    if (trimmedItemName.length < 2) {
+  const validateAndProcessInput = () => {
+    // 1. Validate item name
+    if (!/^[a-zA-Z\s]+$/.test(itemName) || itemName.trim().length < 2) {
       setError('Please enter a valid item name.');
-      return false;
+      return null;
     }
 
-    // 2. Check for valid quantity
-    const numQuantity = parseFloat(quantity);
-    if (isNaN(numQuantity) || numQuantity <= 0 || numQuantity > 10000) {
-      setError('Please enter a valid quantity (between 1 and 10000).');
-      return false;
+    // 2. Validate quantity
+    let numQuantity = parseFloat(quantity);
+    if (isNaN(numQuantity) || numQuantity <= 0) {
+      setError('Please enter a valid, positive quantity.');
+      return null;
     }
 
-    // 3. Check against a dictionary API
-    setIsValidating(true);
+    // 3. Validate unit
+    if (!unit) {
+      setError('Please select a unit for your item.');
+      return null;
+    }
+
+    // 4. Process and convert units
+    let processedQuantity = numQuantity;
+    let processedUnit = unit;
+
+    if (unit === 'g' && numQuantity >= 1000) {
+        processedQuantity = numQuantity / 1000;
+        processedUnit = 'kg';
+    } else if (unit === 'ml' && numQuantity >= 1000) {
+        processedQuantity = numQuantity / 1000;
+        processedUnit = 'litre';
+    }
+
     setError('');
-    try {
-      const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${trimmedItemName}`);
-      if (!response.ok) {
-        setError(`"${itemName}" doesn't seem to be a valid item. Please check the spelling.`);
-        return false;
-      }
-    } catch (apiError) {
-      console.error("Dictionary API error:", apiError);
-      // If API fails, we can skip the check to not block the user.
-      // For a production app, you might want a more robust fallback.
-    } finally {
-      setIsValidating(false);
-    }
-
-    return true;
+    return {
+        name: itemName.trim(),
+        quantity: processedQuantity,
+        unit: processedUnit
+    };
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    const isValid = await validateInput();
-    if (!isValid) {
-      return;
-    }
+    const processedItem = validateAndProcessInput();
     
-    onAddItem({ 
-      name: itemName.trim(), 
-      quantity: parseFloat(quantity), 
-      unit 
-    });
-
-    // Reset form
-    setItemName('');
-    setQuantity('');
-    setUnit('');
-    setError('');
+    if (processedItem) {
+        onAddItem(processedItem);
+        // Reset form
+        setItemName('');
+        setQuantity('');
+        setUnit('');
+        setError('');
+    }
   };
 
   return (
@@ -88,10 +86,13 @@ export default function InventoryPage({ inventory, onAddItem, onDeleteItem }) {
             value={unit}
             onChange={(e) => setUnit(e.target.value)}
             className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 col-span-1 bg-white"
+            required
           >
             <option value="">- Unit -</option>
             <optgroup label="Count">
               <option value="pcs">pcs</option>
+              <option value="box">box</option>
+              <option value="packet">packet</option>
             </optgroup>
             <optgroup label="Weight">
               <option value="kg">kg</option>
