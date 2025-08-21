@@ -46,20 +46,16 @@ export default function App() {
   }, [session]);
 
   const addItemToInventory = async (item) => {
-    // FIX: Ensure all required fields, including purchase_quantity, are sent to Supabase.
-    const newItem = {
-        name: item.name,
-        quantity: item.quantity,
-        unit: item.unit,
-        purchase_quantity: item.quantity, // Set purchase_quantity to the initial quantity
-        user_id: session.user.id
-    };
-    const { data, error } = await supabase.from('inventory').insert([newItem]).select();
-    if (error) {
-        console.error('Error adding item:', error);
-    } else if (data) {
-        setInventory(prev => [...prev, data[0]]);
-    }
+    const { data, error } = await supabase.from('inventory').insert([{ 
+        name: item.name, 
+        quantity: item.quantity, 
+        unit: item.unit, 
+        purchase_quantity: item.quantity, 
+        user_id: session.user.id 
+    }]).select();
+
+    if (error) console.error('Error adding item:', error);
+    else if (data) setInventory(prev => [...prev, data[0]]);
   };
 
   const deleteItemFromInventory = async (id) => {
@@ -68,30 +64,50 @@ export default function App() {
   };
 
   const handleCookRecipe = async (recipe) => {
-    const itemsToUpdate = [];
-    const itemsToMove = [];
-    
-    recipe.ingredients.forEach(usedIng => {
-      const invItem = inventory.find(item => item.name.toLowerCase() === usedIng.name.toLowerCase());
-      if (invItem) {
-        const newQuantity = invItem.quantity - usedIng.quantity;
-        if (newQuantity <= 0) itemsToMove.push(invItem);
-        else itemsToUpdate.push({ ...invItem, quantity: newQuantity });
-      }
-    });
+    try {
+        const itemsToUpdate = [];
+        const itemsToDeleteIds = [];
+        const itemsToAddToShoppingList = [];
 
-    if (itemsToMove.length > 0) {
-      await supabase.from('inventory').delete().in('id', itemsToMove.map(i => i.id));
-      await supabase.from('shopping_list').insert(itemsToMove.map(i => ({ name: i.name, quantity: i.quantity, unit: i.unit, purchase_quantity: i.purchase_quantity, user_id: session.user.id })));
-    }
-    if (itemsToUpdate.length > 0) {
-      await supabase.from('inventory').upsert(itemsToUpdate);
-    }
+        for (const usedIng of recipe.ingredients) {
+            const invItem = inventory.find(item => item.name.toLowerCase() === usedIng.name.toLowerCase());
+            if (invItem) {
+                const newQuantity = invItem.quantity - usedIng.quantity;
+                if (newQuantity <= 0) {
+                    itemsToDeleteIds.push(invItem.id);
+                    itemsToAddToShoppingList.push({
+                        name: invItem.name,
+                        quantity: invItem.purchase_quantity,
+                        unit: invItem.unit,
+                        purchase_quantity: invItem.purchase_quantity,
+                        user_id: session.user.id
+                    });
+                } else {
+                    itemsToUpdate.push({ ...invItem, quantity: newQuantity });
+                }
+            }
+        }
 
-    const { data: newInv } = await supabase.from('inventory').select('*');
-    const { data: newShop } = await supabase.from('shopping_list').select('*');
-    setInventory(newInv || []);
-    setShoppingList(newShop || []);
+        // Perform all database operations
+        if (itemsToDeleteIds.length > 0) {
+            await supabase.from('inventory').delete().in('id', itemsToDeleteIds);
+        }
+        if (itemsToAddToShoppingList.length > 0) {
+            await supabase.from('shopping_list').insert(itemsToAddToShoppingList);
+        }
+        if (itemsToUpdate.length > 0) {
+            await supabase.from('inventory').upsert(itemsToUpdate);
+        }
+
+        // Refresh local state from the database to ensure consistency
+        const { data: newInv } = await supabase.from('inventory').select('*');
+        const { data: newShop } = await supabase.from('shopping_list').select('*');
+        setInventory(newInv || []);
+        setShoppingList(newShop || []);
+
+    } catch (error) {
+        console.error("Error processing recipe:", error);
+    }
   };
 
   const handleBuyItem = async (item) => {
