@@ -1,19 +1,51 @@
 import React, { useState } from 'react';
-import { List, PlusCircle, Trash2 } from 'lucide-react';
+import { List, PlusCircle, Trash2, AlertCircle } from 'lucide-react';
 
 export default function InventoryPage({ inventory, onAddItem, onDeleteItem }) {
   const [itemName, setItemName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [unit, setUnit] = useState('');
+  const [error, setError] = useState('');
+
+  const validateInput = () => {
+    // 1. Check for valid item name (not just numbers or random letters)
+    if (!/^[a-zA-Z\s]+$/.test(itemName) || itemName.trim().length < 2) {
+      setError('Please enter a valid item name (letters and spaces only).');
+      return false;
+    }
+
+    // 2. Check for valid quantity (positive and not excessively large)
+    const numQuantity = parseFloat(quantity);
+    if (isNaN(numQuantity) || numQuantity <= 0) {
+      setError('Please enter a valid, positive quantity.');
+      return false;
+    }
+    if (numQuantity > 10000) {
+      setError('Quantity seems too high. Please enter a reasonable amount.');
+      return false;
+    }
+
+    setError('');
+    return true;
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!itemName || !quantity) return;
-    // We'll add a proper ID when we connect to Supabase
-    onAddItem({ id: Date.now(), name: itemName, quantity: parseFloat(quantity), unit });
+    if (!validateInput()) {
+      return;
+    }
+    
+    onAddItem({ 
+      name: itemName.trim(), 
+      quantity: parseFloat(quantity), 
+      unit 
+    });
+
+    // Reset form
     setItemName('');
     setQuantity('');
     setUnit('');
+    setError('');
   };
 
   return (
@@ -42,18 +74,30 @@ export default function InventoryPage({ inventory, onAddItem, onDeleteItem }) {
             className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 col-span-1 bg-white"
           >
             <option value="">- Unit -</option>
-            <option value="pcs">pcs</option>
-            <option value="kg">kg</option>
-            <option value="g">g</option>
-            <option value="litre">litre</option>
-            <option value="ml">ml</option>
-            <option value="lbs">lbs</option>
-            <option value="oz">oz</option>
+            <optgroup label="Count">
+              <option value="pcs">pcs</option>
+            </optgroup>
+            <optgroup label="Weight">
+              <option value="kg">kg</option>
+              <option value="g">g</option>
+              <option value="lbs">lbs</option>
+              <option value="oz">oz</option>
+            </optgroup>
+            <optgroup label="Volume">
+              <option value="litre">litre</option>
+              <option value="ml">ml</option>
+            </optgroup>
           </select>
           <button type="submit" className="bg-green-500 text-white p-3 rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center shadow col-span-1">
             <PlusCircle size={24} />
           </button>
         </div>
+        {error && (
+          <div className="mt-3 flex items-center text-red-600 bg-red-50 p-3 rounded-lg">
+            <AlertCircle size={20} className="mr-2"/>
+            <p className="text-sm font-medium">{error}</p>
+          </div>
+        )}
       </form>
       
       {inventory.length === 0 ? (
