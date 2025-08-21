@@ -6,8 +6,13 @@ export default function RecipePage({ inventory, onCookRecipe }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [preference, setPreference] = useState('surprise me');
-  const [cuisine, setCuisine] = useState('any'); // New state for cuisine
+  const [cuisine, setCuisine] = useState('any');
   const [selectedRecipe, setSelectedRecipe] = useState(null);
+
+  const hasNonVegIngredients = () => {
+    const nonVegKeywords = ['chicken', 'meat', 'beef', 'pork', 'fish', 'prawns', 'shrimp', 'lamb', 'egg', 'eggs'];
+    return inventory.some(item => nonVegKeywords.some(keyword => item.name.toLowerCase().includes(keyword)));
+  };
 
   const generateRecipes = async () => {
     if (inventory.length < 2) {
@@ -18,9 +23,14 @@ export default function RecipePage({ inventory, onCookRecipe }) {
     setError(null);
     setRecipes([]);
 
+    let finalPreference = preference;
+    if (preference === 'non-veg' && !hasNonVegIngredients()) {
+        finalPreference = 'veg'; // Override to veg if no non-veg items are present
+    }
+
     const ingredientsList = inventory.map(item => `${item.quantity} ${item.unit || ''} of ${item.name}`).join(', ');
     const cuisineText = cuisine === 'any' ? '' : `${cuisine} `;
-    const prompt = `You are a helpful chef. Based on the following ingredients I have: ${ingredientsList}, generate 3 unique ${preference} ${cuisineText}recipe ideas portioned for one person. Assume I have basic pantry staples like salt, pepper, and oil. For each recipe, provide: 1. A 'recipeName' (string). 2. An 'ingredients' list (array of objects with name, quantity, unit) using ONLY the main ingredients from my list. 3. A single string for 'instructions' with concise, step-by-step cooking directions, separating each step with a period (.).`;
+    const prompt = `You are a helpful chef. Based on the following ingredients I have: ${ingredientsList}, generate 3 unique ${finalPreference} ${cuisineText}recipe ideas portioned for one person. Assume I have basic pantry staples like salt, pepper, and oil. For each recipe, provide: 1. A 'recipeName' (string). 2. An 'ingredients' list (array of objects with name, quantity, unit) using ONLY the main ingredients from my list. 3. A single string for 'instructions' with concise, step-by-step cooking directions, separating each step with a period (.).`;
 
     const payload = {
       contents: [{ parts: [{ text: prompt }] }],
