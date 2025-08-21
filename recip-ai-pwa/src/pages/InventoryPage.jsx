@@ -1,73 +1,39 @@
 import React, { useState } from 'react';
 import { List, PlusCircle, Trash2, AlertCircle } from 'lucide-react';
 
-export default function InventoryPage({ inventory, onAddItem, onDeleteItem }) {
+export default function InventoryPage({ inventory, onAddItem, onDeleteItem, unitSystem }) {
   const [itemName, setItemName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [unit, setUnit] = useState('');
   const [error, setError] = useState('');
-  const [isValidating, setIsValidating] = useState(false);
 
-  const validateAndProcessInput = () => {
+  const validateInput = () => {
     const trimmedItemName = itemName.trim();
-
-    // 1. Validate item name (must contain letters and at least one vowel)
     if (!/^[a-zA-Z\s]+$/.test(trimmedItemName) || !/[aeiouAEIOU]/.test(trimmedItemName) || trimmedItemName.length < 2) {
       setError('Please enter a valid item name.');
       return null;
     }
-
-    // 2. Validate quantity
-    let numQuantity = parseFloat(quantity);
+    const numQuantity = parseFloat(quantity);
     if (isNaN(numQuantity) || numQuantity <= 0) {
       setError('Please enter a valid, positive quantity.');
       return null;
     }
-
-    // 3. Validate unit
     if (!unit) {
       setError('Please select a unit for your item.');
       return null;
     }
-
-    // 4. Process and convert units to SI standards
-    let processedQuantity = numQuantity;
-    let processedUnit = unit;
-
-    if (unit === 'g' && numQuantity >= 1000) {
-        processedQuantity = numQuantity / 1000;
-        processedUnit = 'kg';
-    } else if (unit === 'ml' && numQuantity >= 1000) {
-        processedQuantity = numQuantity / 1000;
-        processedUnit = 'litre';
-    } else if (unit === 'lbs') {
-        processedQuantity = numQuantity * 0.453592;
-        processedUnit = 'kg';
-    } else if (unit === 'oz') {
-        processedQuantity = numQuantity * 28.3495;
-        processedUnit = 'g';
-    }
-
-
     setError('');
-    return {
-        name: itemName.trim(),
-        quantity: processedQuantity,
-        unit: processedUnit
-    };
+    return { name: trimmedItemName, quantity: numQuantity, unit };
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const processedItem = validateAndProcessInput();
-    
+    const processedItem = validateInput();
     if (processedItem) {
-        onAddItem(processedItem);
-        // Reset form
-        setItemName('');
-        setQuantity('');
-        setUnit('');
-        setError('');
+      onAddItem(processedItem);
+      setItemName('');
+      setQuantity('');
+      setUnit('');
     }
   };
 
@@ -75,47 +41,33 @@ export default function InventoryPage({ inventory, onAddItem, onDeleteItem }) {
     <div className="p-4">
       <form onSubmit={handleSubmit} className="p-4 bg-gray-100 rounded-lg shadow-sm mb-6">
         <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
-          <input 
-            type="text" 
-            value={itemName}
-            onChange={(e) => setItemName(e.target.value)}
-            placeholder="Item name" 
-            className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 col-span-1 sm:col-span-2" 
-            required 
-          />
-          <input 
-            type="number" 
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-            placeholder="Qty" 
-            className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 col-span-1" 
-            required 
-          />
-          <select 
-            value={unit}
-            onChange={(e) => setUnit(e.target.value)}
-            className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 col-span-1 bg-white"
-            required
-          >
+          <input type="text" value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="Item name" className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 col-span-1 sm:col-span-2" required />
+          <input type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="Qty" className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 col-span-1" required />
+          <select value={unit} onChange={(e) => setUnit(e.target.value)} className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 col-span-1 bg-white" required>
             <option value="">- Unit -</option>
             <optgroup label="Count">
               <option value="pcs">pcs</option>
               <option value="box">box</option>
               <option value="packet">packet</option>
             </optgroup>
-            <optgroup label="Weight">
-              <option value="kg">kg</option>
-              <option value="g">g</option>
-              <option value="lbs">lbs</option>
-              <option value="oz">oz</option>
-            </optgroup>
-            <optgroup label="Volume">
-              <option value="litre">litre</option>
-              <option value="ml">ml</option>
-            </optgroup>
+            {unitSystem === 'metric' ? (
+              <optgroup label="Metric">
+                <option value="kg">kg</option>
+                <option value="g">g</option>
+                <option value="litre">litre</option>
+                <option value="ml">ml</option>
+              </optgroup>
+            ) : (
+              <optgroup label="Imperial">
+                <option value="lbs">lbs</option>
+                <option value="oz">oz</option>
+                <option value="gallon">gallon</option>
+                <option value="cup">cup</option>
+              </optgroup>
+            )}
           </select>
-          <button type="submit" disabled={isValidating} className="bg-green-500 text-white p-3 rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center shadow col-span-1 disabled:bg-gray-400">
-            {isValidating ? <div className="animate-spin h-6 w-6 border-2 border-t-transparent border-white rounded-full"></div> : <PlusCircle size={24} />}
+          <button type="submit" className="bg-green-500 text-white p-3 rounded-lg hover:bg-green-600 flex items-center justify-center shadow col-span-1">
+            <PlusCircle size={24} />
           </button>
         </div>
         {error && (
@@ -125,7 +77,6 @@ export default function InventoryPage({ inventory, onAddItem, onDeleteItem }) {
           </div>
         )}
       </form>
-      
       {inventory.length === 0 ? (
         <div className="text-center py-10 px-4 bg-gray-50 rounded-lg">
           <List className="mx-auto h-12 w-12 text-gray-400" />
