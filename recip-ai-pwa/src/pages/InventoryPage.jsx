@@ -8,9 +8,11 @@ export default function InventoryPage({ inventory, onAddItem, onDeleteItem }) {
   const [error, setError] = useState('');
 
   const validateInput = () => {
-    // 1. Check for valid item name (allow letters from any language and spaces)
-    if (!/^[\p{L}\s]+$/u.test(itemName) || itemName.trim().length < 2) {
-      setError('Please enter a valid item name (letters and spaces only).');
+    const trimmedItemName = itemName.trim();
+
+    // 1. Check for valid item name (must contain letters and at least one vowel)
+    if (!/^[\p{L}\s]+$/u.test(trimmedItemName) || !/[aeiouAEIOU]/.test(trimmedItemName) || trimmedItemName.length < 2) {
+      setError('Please enter a valid item name.');
       return false;
     }
 
