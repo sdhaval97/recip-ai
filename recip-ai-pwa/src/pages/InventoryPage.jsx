@@ -6,34 +6,48 @@ export default function InventoryPage({ inventory, onAddItem, onDeleteItem }) {
   const [quantity, setQuantity] = useState('');
   const [unit, setUnit] = useState('');
   const [error, setError] = useState('');
+  const [isValidating, setIsValidating] = useState(false);
 
-  const validateInput = () => {
-    const trimmedItemName = itemName.trim();
+  const validateInput = async () => {
+    const trimmedItemName = itemName.trim().toLowerCase();
 
-    // 1. Check for valid item name (must contain letters and at least one vowel)
-    if (!/^[\p{L}\s]+$/u.test(trimmedItemName) || !/[aeiouAEIOU]/.test(trimmedItemName) || trimmedItemName.length < 2) {
+    // 1. Check for basic length and character requirements first
+    if (trimmedItemName.length < 2) {
       setError('Please enter a valid item name.');
       return false;
     }
 
-    // 2. Check for valid quantity (positive and not excessively large)
+    // 2. Check for valid quantity
     const numQuantity = parseFloat(quantity);
-    if (isNaN(numQuantity) || numQuantity <= 0) {
-      setError('Please enter a valid, positive quantity.');
-      return false;
-    }
-    if (numQuantity > 10000) {
-      setError('Quantity seems too high. Please enter a reasonable amount.');
+    if (isNaN(numQuantity) || numQuantity <= 0 || numQuantity > 10000) {
+      setError('Please enter a valid quantity (between 1 and 10000).');
       return false;
     }
 
+    // 3. Check against a dictionary API
+    setIsValidating(true);
     setError('');
+    try {
+      const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${trimmedItemName}`);
+      if (!response.ok) {
+        setError(`"${itemName}" doesn't seem to be a valid item. Please check the spelling.`);
+        return false;
+      }
+    } catch (apiError) {
+      console.error("Dictionary API error:", apiError);
+      // If API fails, we can skip the check to not block the user.
+      // For a production app, you might want a more robust fallback.
+    } finally {
+      setIsValidating(false);
+    }
+
     return true;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateInput()) {
+    const isValid = await validateInput();
+    if (!isValid) {
       return;
     }
     
@@ -90,8 +104,8 @@ export default function InventoryPage({ inventory, onAddItem, onDeleteItem }) {
               <option value="ml">ml</option>
             </optgroup>
           </select>
-          <button type="submit" className="bg-green-500 text-white p-3 rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center shadow col-span-1">
-            <PlusCircle size={24} />
+          <button type="submit" disabled={isValidating} className="bg-green-500 text-white p-3 rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center shadow col-span-1 disabled:bg-gray-400">
+            {isValidating ? <div className="animate-spin h-6 w-6 border-2 border-t-transparent border-white rounded-full"></div> : <PlusCircle size={24} />}
           </button>
         </div>
         {error && (
