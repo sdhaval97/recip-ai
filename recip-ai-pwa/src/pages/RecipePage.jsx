@@ -6,6 +6,7 @@ export default function RecipePage({ inventory, onCookRecipe }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [preference, setPreference] = useState('surprise me');
+  const [cuisine, setCuisine] = useState('any'); // New state for cuisine
   const [selectedRecipe, setSelectedRecipe] = useState(null);
 
   const generateRecipes = async () => {
@@ -18,7 +19,8 @@ export default function RecipePage({ inventory, onCookRecipe }) {
     setRecipes([]);
 
     const ingredientsList = inventory.map(item => `${item.quantity} ${item.unit || ''} of ${item.name}`).join(', ');
-    const prompt = `You are a helpful chef. Based on the following ingredients I have: ${ingredientsList}, generate 3 unique ${preference} recipe ideas portioned for one person. Assume I have basic pantry staples like salt, pepper, and oil. For each recipe, provide: 1. A 'recipeName' (string). 2. An 'ingredients' list (array of objects with name, quantity, unit) using ONLY the main ingredients from my list. 3. A single string for 'instructions' with concise, step-by-step cooking directions, separating each step with a period (.).`;
+    const cuisineText = cuisine === 'any' ? '' : `${cuisine} `;
+    const prompt = `You are a helpful chef. Based on the following ingredients I have: ${ingredientsList}, generate 3 unique ${preference} ${cuisineText}recipe ideas portioned for one person. Assume I have basic pantry staples like salt, pepper, and oil. For each recipe, provide: 1. A 'recipeName' (string). 2. An 'ingredients' list (array of objects with name, quantity, unit) using ONLY the main ingredients from my list. 3. A single string for 'instructions' with concise, step-by-step cooking directions, separating each step with a period (.).`;
 
     const payload = {
       contents: [{ parts: [{ text: prompt }] }],
@@ -119,17 +121,27 @@ export default function RecipePage({ inventory, onCookRecipe }) {
   return (
     <div className="p-4">
       <div className="bg-white p-4 rounded-lg shadow-md mb-6">
-        <div className="flex flex-col sm:flex-row gap-4 items-center">
-          <select value={preference} onChange={(e) => setPreference(e.target.value)} className="w-full sm:w-auto flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          <select value={preference} onChange={(e) => setPreference(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
             <option value="surprise me">Surprise Me</option>
             <option value="veg">Vegetarian</option>
             <option value="non-veg">Non-Vegetarian</option>
           </select>
-          <button onClick={generateRecipes} disabled={isLoading || inventory.length < 2} className="w-full sm:w-auto bg-green-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600 flex items-center justify-center gap-2 disabled:bg-gray-400">
-            {isLoading ? <div className="animate-spin h-5 w-5 border-2 border-t-transparent border-white rounded-full"></div> : <Sparkles size={20} />}
-            <span>{isLoading ? 'Generating...' : 'Generate Recipes'}</span>
-          </button>
+          <select value={cuisine} onChange={(e) => setCuisine(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+            <option value="any">Any Cuisine</option>
+            <option value="Italian">Italian</option>
+            <option value="Mexican">Mexican</option>
+            <option value="Indian">Indian</option>
+            <option value="Chinese">Chinese</option>
+            <option value="Japanese">Japanese</option>
+            <option value="Thai">Thai</option>
+            <option value="Mediterranean">Mediterranean</option>
+          </select>
         </div>
+        <button onClick={generateRecipes} disabled={isLoading || inventory.length < 2} className="w-full bg-green-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600 flex items-center justify-center gap-2 disabled:bg-gray-400">
+          {isLoading ? <div className="animate-spin h-5 w-5 border-2 border-t-transparent border-white rounded-full"></div> : <Sparkles size={20} />}
+          <span>{isLoading ? 'Generating...' : 'Generate Recipes'}</span>
+        </button>
         {inventory.length < 2 && <p className="text-center text-sm text-yellow-700 mt-3 bg-yellow-100 p-2 rounded-md">Add at least 2 items to your inventory to find recipes.</p>}
       </div>
 
