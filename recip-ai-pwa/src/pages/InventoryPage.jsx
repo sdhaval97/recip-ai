@@ -30,7 +30,7 @@ export default function InventoryPage({ inventory, onAddItem, onDeleteItem }) {
       return null;
     }
 
-    // 4. Process and convert units
+    // 4. Process and convert units to SI standards
     let processedQuantity = numQuantity;
     let processedUnit = unit;
 
@@ -40,7 +40,14 @@ export default function InventoryPage({ inventory, onAddItem, onDeleteItem }) {
     } else if (unit === 'ml' && numQuantity >= 1000) {
         processedQuantity = numQuantity / 1000;
         processedUnit = 'litre';
+    } else if (unit === 'lbs') {
+        processedQuantity = numQuantity * 0.453592;
+        processedUnit = 'kg';
+    } else if (unit === 'oz') {
+        processedQuantity = numQuantity * 28.3495;
+        processedUnit = 'g';
     }
+
 
     setError('');
     return {
