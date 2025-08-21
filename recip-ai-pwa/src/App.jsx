@@ -46,8 +46,20 @@ export default function App() {
   }, [session]);
 
   const addItemToInventory = async (item) => {
-    const { data } = await supabase.from('inventory').insert([{ ...item, user_id: session.user.id }]).select();
-    if (data) setInventory(prev => [...prev, data[0]]);
+    // FIX: Ensure all required fields, including purchase_quantity, are sent to Supabase.
+    const newItem = {
+        name: item.name,
+        quantity: item.quantity,
+        unit: item.unit,
+        purchase_quantity: item.quantity, // Set purchase_quantity to the initial quantity
+        user_id: session.user.id
+    };
+    const { data, error } = await supabase.from('inventory').insert([newItem]).select();
+    if (error) {
+        console.error('Error adding item:', error);
+    } else if (data) {
+        setInventory(prev => [...prev, data[0]]);
+    }
   };
 
   const deleteItemFromInventory = async (id) => {
