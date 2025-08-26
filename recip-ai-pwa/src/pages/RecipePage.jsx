@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { UtensilsCrossed, Sparkles, RefreshCw, ArrowLeft } from 'lucide-react';
+import { UtensilsCrossed, Sparkles, RefreshCw, ArrowLeft, Heart } from 'lucide-react';
 
-export default function RecipePage({ inventory, onCookRecipe }) {
+export default function RecipePage({ inventory, onCookRecipe, onSaveRecipe }) {
   const [recipes, setRecipes] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -15,6 +15,7 @@ export default function RecipePage({ inventory, onCookRecipe }) {
   };
 
   const generateRecipes = async () => {
+    // ... (This function remains the same as the previous version)
     if (inventory.length < 2) {
       setError("Add at least 2 items to your inventory to find recipes.");
       return;
@@ -25,7 +26,7 @@ export default function RecipePage({ inventory, onCookRecipe }) {
 
     let finalPreference = preference;
     if (preference === 'non-veg' && !hasNonVegIngredients()) {
-        finalPreference = 'veg'; // Override to veg if no non-veg items are present
+        finalPreference = 'veg';
     }
 
     const ingredientsList = inventory.map(item => `${item.quantity} ${item.unit || ''} of ${item.name}`).join(', ');
@@ -96,6 +97,12 @@ export default function RecipePage({ inventory, onCookRecipe }) {
     setRecipes([]);
   };
 
+  const handleSaveRecipe = () => {
+    onSaveRecipe(selectedRecipe);
+    // Optionally, provide feedback to the user, e.g., a toast notification
+    alert('Recipe saved!');
+  };
+
   if (selectedRecipe) {
     return (
       <div className="p-4 animate-fade-in">
@@ -120,14 +127,20 @@ export default function RecipePage({ inventory, onCookRecipe }) {
               ))}
             </ul>
           </div>
-          <button onClick={handleDoneCooking} className="mt-6 w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600">
-            I'm Done Cooking!
-          </button>
+          <div className="flex gap-4 mt-6">
+            <button onClick={handleSaveRecipe} className="w-full bg-blue-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2">
+              <Heart size={20} /> Save Recipe
+            </button>
+            <button onClick={handleDoneCooking} className="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600">
+              I'm Done Cooking!
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
+  // ... (The rest of the component remains the same)
   return (
     <div className="p-4">
       <div className="bg-white p-4 rounded-lg shadow-md mb-6">
