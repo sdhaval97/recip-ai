@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UtensilsCrossed, Sparkles, RefreshCw, ArrowLeft, Heart } from 'lucide-react';
+import { UtensilsCrossed, Sparkles, RefreshCw, ArrowLeft, Heart, Leaf, Beef } from 'lucide-react';
 
 export default function RecipePage({ inventory, onCookRecipe, onSaveRecipe }) {
   const [recipes, setRecipes] = useState([]);
@@ -15,7 +15,6 @@ export default function RecipePage({ inventory, onCookRecipe, onSaveRecipe }) {
   };
 
   const generateRecipes = async () => {
-    // ... (This function remains the same as the previous version)
     if (inventory.length < 2) {
       setError("Add at least 2 items to your inventory to find recipes.");
       return;
@@ -31,7 +30,7 @@ export default function RecipePage({ inventory, onCookRecipe, onSaveRecipe }) {
 
     const ingredientsList = inventory.map(item => `${item.quantity} ${item.unit || ''} of ${item.name}`).join(', ');
     const cuisineText = cuisine === 'any' ? '' : `${cuisine} `;
-    const prompt = `You are a helpful chef. Based on the following ingredients I have: ${ingredientsList}, generate 3 unique ${finalPreference} ${cuisineText}recipe ideas portioned for one person. Assume I have basic pantry staples like salt, pepper, and oil. For each recipe, provide: 1. A 'recipeName' (string). 2. An 'ingredients' list (array of objects with name, quantity, unit) using ONLY the main ingredients from my list. 3. A single string for 'instructions' with concise, step-by-step cooking directions, separating each step with a period (.).`;
+    const prompt = `You are a helpful chef. Based on the following ingredients I have: ${ingredientsList}, generate 3 unique ${finalPreference} ${cuisineText}recipe ideas portioned for one person. Assume I have basic pantry staples like salt, pepper, and oil. For each recipe, provide: 1. A 'recipeName' (string). 2. An 'ingredients' list (array of objects with name, quantity, unit) using ONLY the main ingredients from my list. 3. A single string for 'instructions' with concise, step-by-step cooking directions, separating each step with a period (.). 4. A boolean value 'isVegetarian'.`;
 
     const payload = {
       contents: [{ parts: [{ text: prompt }] }],
@@ -55,9 +54,10 @@ export default function RecipePage({ inventory, onCookRecipe, onSaveRecipe }) {
                   required: ["name", "quantity", "unit"]
                 }
               },
-              instructions: { type: "STRING" }
+              instructions: { type: "STRING" },
+              isVegetarian: { type: "BOOLEAN" }
             },
-            required: ["recipeName", "ingredients", "instructions"]
+            required: ["recipeName", "ingredients", "instructions", "isVegetarian"]
           }
         }
       }
@@ -99,7 +99,6 @@ export default function RecipePage({ inventory, onCookRecipe, onSaveRecipe }) {
 
   const handleSaveRecipe = () => {
     onSaveRecipe(selectedRecipe);
-    // Optionally, provide feedback to the user, e.g., a toast notification
     alert('Recipe saved!');
   };
 
@@ -140,7 +139,6 @@ export default function RecipePage({ inventory, onCookRecipe, onSaveRecipe }) {
     );
   }
 
-  // ... (The rest of the component remains the same)
   return (
     <div className="p-4">
       <div className="bg-white p-4 rounded-lg shadow-md mb-6">
@@ -174,7 +172,10 @@ export default function RecipePage({ inventory, onCookRecipe, onSaveRecipe }) {
         <div className="space-y-4">
           {recipes.map((recipe, index) => (
             <div key={index} className="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
-              <h4 className="text-lg font-bold text-green-700 capitalize">{recipe.recipeName}</h4>
+              <div className="flex justify-between items-start">
+                <h4 className="text-lg font-bold text-green-700 capitalize">{recipe.recipeName}</h4>
+                {recipe.isVegetarian ? <Leaf size={20} className="text-green-500" /> : <Beef size={20} className="text-red-500" />}
+              </div>
               <p className="text-sm text-gray-500 mt-2 mb-3">Uses:</p>
               <ul className="flex flex-wrap gap-2">
                 {recipe.ingredients.map((ing, i) => (
