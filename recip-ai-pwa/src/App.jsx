@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChefHat, List, UtensilsCrossed, ShoppingCart, User } from 'lucide-react';
+import { ChefHat, List, UtensilsCrossed, ShoppingCart, User, Heart } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 import InventoryPage from './pages/InventoryPage';
@@ -7,36 +7,14 @@ import RecipePage from './pages/RecipePage';
 import ShoppingListPage from './pages/ShoppingListPage';
 import AuthPage from './pages/AuthPage';
 import ProfilePage from './pages/ProfilePage';
-
-// --- Unit Conversion Helpers ---
-const toBaseUnits = (quantity, unit) => {
-    switch (unit) {
-        case 'kg': return { value: quantity * 1000, baseUnit: 'g' };
-        case 'g': return { value: quantity, baseUnit: 'g' };
-        case 'lbs': return { value: quantity * 453.592, baseUnit: 'g' };
-        case 'oz': return { value: quantity * 28.3495, baseUnit: 'g' };
-        case 'litre': return { value: quantity * 1000, baseUnit: 'ml' };
-        case 'ml': return { value: quantity, baseUnit: 'ml' };
-        default: return { value: quantity, baseUnit: unit }; // For pcs, box, etc.
-    }
-};
-
-const fromBaseUnits = (quantity, originalUnit) => {
-    switch (originalUnit) {
-        case 'kg': return quantity / 1000;
-        case 'lbs': return quantity / 453.592;
-        case 'oz': return quantity / 28.3495;
-        case 'litre': return quantity / 1000;
-        default: return quantity;
-    }
-};
-
+import FavoritesPage from './pages/FavoritesPage'; // Import the new page
 
 export default function App() {
   const [session, setSession] = useState(null);
   const [activePage, setActivePage] = useState('inventory');
   const [inventory, setInventory] = useState([]);
   const [shoppingList, setShoppingList] = useState([]);
+  const [savedRecipes, setSavedRecipes] = useState([]); // New state for saved recipes
   const [loading, setLoading] = useState(true);
   const [unitSystem, setUnitSystem] = useState('metric');
 
@@ -62,9 +40,11 @@ export default function App() {
       
       const { data: inventoryData } = await supabase.from('inventory').select('*').order('created_at');
       const { data: shoppingData } = await supabase.from('shopping_list').select('*').order('created_at');
+      const { data: savedRecipesData } = await supabase.from('saved_recipes').select('*').order('created_at');
 
       setInventory(inventoryData || []);
       setShoppingList(shoppingData || []);
+      setSavedRecipes(savedRecipesData || []);
       setLoading(false);
     };
     fetchData();
@@ -80,6 +60,27 @@ export default function App() {
     setInventory(prev => prev.filter(item => item.id !== id));
   };
 
+  const handleSaveRecipe = async (recipe) => {
+    const { data, error } = await supabase.from('saved_recipes').insert([{
+      user_id: session.user.id,
+      recipe_name: recipe.recipeName,
+      ingredients: recipe.ingredients,
+      instructions: recipe.instructions
+    }]).select();
+
+    if (error) {
+      console.error("Error saving recipe:", error);
+    } else if (data) {
+      setSavedRecipes(prev => [...prev, data[0]]);
+    }
+  };
+
+  const handleDeleteFavorite = async (id) => {
+    await supabase.from('saved_recipes').delete().eq('id', id);
+    setSavedRecipes(prev => prev.filter(recipe => recipe.id !== id));
+  };
+
+  // ... (handleCookRecipe and handleBuyItem functions remain the same)
   const handleCookRecipe = async (recipe) => {
     try {
         const itemsToUpdate = [];
@@ -89,26 +90,18 @@ export default function App() {
         for (const usedIng of recipe.ingredients) {
             const invItem = inventory.find(item => item.name.toLowerCase() === usedIng.name.toLowerCase());
             if (invItem) {
-                const invBase = toBaseUnits(invItem.quantity, invItem.unit);
-                const usedBase = toBaseUnits(usedIng.quantity, usedIng.unit);
-
-                // Only perform subtraction if units are compatible
-                if (invBase.baseUnit === usedBase.baseUnit) {
-                    const newBaseQuantity = invBase.value - usedBase.value;
-                    
-                    if (newBaseQuantity <= 0) {
-                        itemsToDeleteIds.push(invItem.id);
-                        itemsToAddToShoppingList.push({
-                            name: invItem.name,
-                            quantity: invItem.purchase_quantity,
-                            unit: invItem.unit,
-                            purchase_quantity: invItem.purchase_quantity,
-                            user_id: session.user.id
-                        });
-                    } else {
-                        const newOriginalUnitQuantity = fromBaseUnits(newBaseQuantity, invItem.unit);
-                        itemsToUpdate.push({ ...invItem, quantity: newOriginalUnitQuantity });
-                    }
+                const newQuantity = invItem.quantity - usedIng.quantity;
+                if (newQuantity <= 0) {
+                    itemsToDeleteIds.push(invItem.id);
+                    itemsToAddToShoppingList.push({
+                        name: invItem.name,
+                        quantity: invItem.purchase_quantity,
+                        unit: invItem.unit,
+                        purchase_quantity: invItem.purchase_quantity,
+                        user_id: session.user.id
+                    });
+                } else {
+                    itemsToUpdate.push({ ...invItem, quantity: newQuantity });
                 }
             }
         }
@@ -143,6 +136,7 @@ export default function App() {
     setShoppingList(newShop || []);
   };
 
+
   if (!session) {
     return <AuthPage />;
   }
@@ -152,8 +146,9 @@ export default function App() {
     
     switch (activePage) {
       case 'inventory': return <InventoryPage inventory={inventory} onAddItem={addItemToInventory} onDeleteItem={deleteItemFromInventory} unitSystem={unitSystem} />;
-      case 'recipes': return <RecipePage inventory={inventory} onCookRecipe={handleCookRecipe} />;
+      case 'recipes': return <RecipePage inventory={inventory} onCookRecipe={handleCookRecipe} onSaveRecipe={handleSaveRecipe} />;
       case 'shopping-list': return <ShoppingListPage shoppingList={shoppingList} onBuyItem={handleBuyItem} />;
+      case 'favorites': return <FavoritesPage savedRecipes={savedRecipes} onDeleteFavorite={handleDeleteFavorite} />;
       case 'profile': return <ProfilePage session={session} unitSystem={unitSystem} onUnitSystemChange={setUnitSystem} />;
       default: return <InventoryPage inventory={inventory} onAddItem={addItemToInventory} onDeleteItem={deleteItemFromInventory} unitSystem={unitSystem} />;
     }
@@ -180,6 +175,7 @@ export default function App() {
         <div className="px-4 py-2 flex justify-around">
           <NavButton pageName="inventory" icon={<List size={24} />} label="Inventory" />
           <NavButton pageName="recipes" icon={<UtensilsCrossed size={24} />} label="Recipes" />
+          <NavButton pageName="favorites" icon={<Heart size={24} />} label="Favorites" />
           <NavButton pageName="shopping-list" icon={<ShoppingCart size={24} />} label="To Buy" />
           <NavButton pageName="profile" icon={<User size={24} />} label="Profile" />
         </div>
