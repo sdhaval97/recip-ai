@@ -1,12 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UtensilsCrossed, Sparkles, RefreshCw, ArrowLeft, Heart, Leaf, Beef } from 'lucide-react';
 
-export default function RecipePage({ inventory, onCookRecipe, onSaveRecipe, generatedRecipes, setGeneratedRecipes }) {
+export default function RecipePage({ inventory, onCookRecipe, onSaveRecipe, generatedRecipes, setGeneratedRecipes, savedRecipes }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [preference, setPreference] = useState('surprise me');
   const [cuisine, setCuisine] = useState('any');
   const [selectedRecipe, setSelectedRecipe] = useState(null);
+  const [isSaved, setIsSaved] = useState(false);
+
+  useEffect(() => {
+    if (selectedRecipe && savedRecipes) {
+      const alreadyExists = savedRecipes.some(r => r.recipe_name === selectedRecipe.recipeName);
+      setIsSaved(alreadyExists);
+    }
+  }, [selectedRecipe, savedRecipes]);
 
   const hasNonVegIngredients = () => {
     const nonVegKeywords = ['chicken', 'meat', 'beef', 'pork', 'fish', 'prawns', 'shrimp', 'lamb', 'egg', 'eggs'];
@@ -95,9 +103,22 @@ export default function RecipePage({ inventory, onCookRecipe, onSaveRecipe, gene
     setSelectedRecipe(null);
   };
 
-  const handleSaveRecipe = () => {
-    onSaveRecipe(selectedRecipe);
-    alert('Recipe saved!');
+  const handleSaveRecipe = async () => {
+    if (isSaved) return;
+    try {
+        await onSaveRecipe(selectedRecipe);
+        setIsSaved(true);
+    } catch (error) {
+        console.error("Failed to save recipe:", error);
+        alert("Could not save the recipe. Please try again.");
+    }
+  };
+
+  const handleSelectRecipe = (recipe) => {
+    setSelectedRecipe(recipe);
+    // Reset saved state for the new recipe view
+    const alreadyExists = savedRecipes.some(r => r.recipe_name === recipe.recipeName);
+    setIsSaved(alreadyExists);
   };
 
   if (selectedRecipe) {
@@ -125,8 +146,16 @@ export default function RecipePage({ inventory, onCookRecipe, onSaveRecipe, gene
             </ul>
           </div>
           <div className="flex gap-4 mt-6">
-            <button onClick={handleSaveRecipe} className="w-full bg-blue-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2">
-              <Heart size={20} /> Save Recipe
+            <button 
+              onClick={handleSaveRecipe} 
+              disabled={isSaved}
+              className={`w-full font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors ${
+                isSaved 
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                : 'bg-blue-500 text-white hover:bg-blue-600'
+              }`}
+            >
+              <Heart size={20} /> {isSaved ? 'Saved ✓' : 'Save Recipe'}
             </button>
             <button onClick={handleDoneCooking} className="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600">
               I'm Done Cooking!
@@ -180,7 +209,7 @@ export default function RecipePage({ inventory, onCookRecipe, onSaveRecipe, gene
                   <li key={i} className="bg-gray-100 text-gray-700 text-sm font-medium px-3 py-1 rounded-full">{ing.name}</li>
                 ))}
               </ul>
-              <button onClick={() => setSelectedRecipe(recipe)} className="mt-4 w-full bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600">
+              <button onClick={() => handleSelectRecipe(recipe)} className="mt-4 w-full bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600">
                 Cook This
               </button>
             </div>
