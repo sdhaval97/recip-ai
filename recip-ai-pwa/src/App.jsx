@@ -7,14 +7,43 @@ import RecipePage from './pages/RecipePage';
 import ShoppingListPage from './pages/ShoppingListPage';
 import AuthPage from './pages/AuthPage';
 import ProfilePage from './pages/ProfilePage';
-import FavoritesPage from './pages/FavoritesPage'; // Import the new page
+import FavoritesPage from './pages/FavoritesPage';
+
+// --- Unit Conversion Logic ---
+const conversionRates = {
+  // Weight (base: g)
+  g: 1,
+  kg: 1000,
+  lbs: 453.592,
+  oz: 28.35,
+  // Volume (base: ml)
+  ml: 1,
+  litre: 1000,
+  // Count (base: pcs)
+  pcs: 1,
+  box: 1,
+  packet: 1,
+};
+
+const unitToBase = {
+    g: 'g', kg: 'g', lbs: 'g', oz: 'g',
+    ml: 'ml', litre: 'ml',
+    pcs: 'pcs', box: 'pcs', packet: 'pcs',
+};
+
+const convertToBaseUnit = (quantity, unit) => {
+    if (!unit || !conversionRates[unit]) return { quantity, baseUnit: unit || 'pcs' };
+    const baseUnit = unitToBase[unit];
+    const convertedQuantity = quantity * conversionRates[unit];
+    return { quantity: convertedQuantity, baseUnit };
+};
 
 export default function App() {
   const [session, setSession] = useState(null);
   const [activePage, setActivePage] = useState('inventory');
   const [inventory, setInventory] = useState([]);
   const [shoppingList, setShoppingList] = useState([]);
-  const [savedRecipes, setSavedRecipes] = useState([]); // New state for saved recipes
+  const [savedRecipes, setSavedRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [unitSystem, setUnitSystem] = useState('metric');
 
@@ -65,7 +94,8 @@ export default function App() {
       user_id: session.user.id,
       recipe_name: recipe.recipeName,
       ingredients: recipe.ingredients,
-      instructions: recipe.instructions
+      instructions: recipe.instructions,
+      is_vegetarian: recipe.isVegetarian
     }]).select();
 
     if (error) {
@@ -80,51 +110,67 @@ export default function App() {
     setSavedRecipes(prev => prev.filter(recipe => recipe.id !== id));
   };
 
-  // ... (handleCookRecipe and handleBuyItem functions remain the same)
   const handleCookRecipe = async (recipe) => {
     try {
-        const itemsToUpdate = [];
-        const itemsToDeleteIds = [];
-        const itemsToAddToShoppingList = [];
+      const inventoryUpdates = [];
+      const inventoryDeletions = [];
+      const shoppingListAdditions = [];
 
-        for (const usedIng of recipe.ingredients) {
-            const invItem = inventory.find(item => item.name.toLowerCase() === usedIng.name.toLowerCase());
-            if (invItem) {
-                const newQuantity = invItem.quantity - usedIng.quantity;
-                if (newQuantity <= 0) {
-                    itemsToDeleteIds.push(invItem.id);
-                    itemsToAddToShoppingList.push({
-                        name: invItem.name,
-                        quantity: invItem.purchase_quantity,
-                        unit: invItem.unit,
-                        purchase_quantity: invItem.purchase_quantity,
-                        user_id: session.user.id
-                    });
-                } else {
-                    itemsToUpdate.push({ ...invItem, quantity: newQuantity });
-                }
+      for (const usedIng of recipe.ingredients) {
+        const invItem = inventory.find(item => item.name.toLowerCase() === usedIng.name.toLowerCase());
+        if (invItem) {
+          const invInBase = convertToBaseUnit(invItem.quantity, invItem.unit);
+          const usedInBase = convertToBaseUnit(usedIng.quantity, usedIng.unit);
+
+          // Ensure units are compatible before subtracting
+          if (invInBase.baseUnit === usedInBase.baseUnit) {
+            const remainingInBase = invInBase.quantity - usedInBase.quantity;
+
+            if (remainingInBase <= 0.001) { // Use a small threshold for floating point inaccuracies
+              inventoryDeletions.push(invItem.id);
+              // Check if item is already in the shopping list to avoid duplicates
+              if (!shoppingList.find(shopItem => shopItem.name.toLowerCase() === invItem.name.toLowerCase())) {
+                  shoppingListAdditions.push({
+                    name: invItem.name,
+                    quantity: invItem.purchase_quantity,
+                    unit: invItem.unit,
+                    purchase_quantity: invItem.purchase_quantity,
+                    user_id: session.user.id
+                  });
+              }
+            } else {
+              // Convert back to original unit before updating
+              const remainingInOriginalUnit = remainingInBase / (conversionRates[invItem.unit] || 1);
+              inventoryUpdates.push({ ...invItem, quantity: remainingInOriginalUnit });
             }
+          } else {
+            console.warn(`Unit mismatch for ${invItem.name}: Inventory has ${invItem.unit}, recipe uses ${usedIng.unit}. Skipping.`);
+          }
         }
+      }
 
-        if (itemsToDeleteIds.length > 0) {
-            await supabase.from('inventory').delete().in('id', itemsToDeleteIds);
-        }
-        if (itemsToAddToShoppingList.length > 0) {
-            await supabase.from('shopping_list').insert(itemsToAddToShoppingList);
-        }
-        if (itemsToUpdate.length > 0) {
-            await supabase.from('inventory').upsert(itemsToUpdate);
-        }
+      // Perform batch operations
+      if (inventoryDeletions.length > 0) {
+        await supabase.from('inventory').delete().in('id', inventoryDeletions);
+      }
+      if (shoppingListAdditions.length > 0) {
+        await supabase.from('shopping_list').insert(shoppingListAdditions);
+      }
+      if (inventoryUpdates.length > 0) {
+        await supabase.from('inventory').upsert(inventoryUpdates);
+      }
 
-        const { data: newInv } = await supabase.from('inventory').select('*');
-        const { data: newShop } = await supabase.from('shopping_list').select('*');
-        setInventory(newInv || []);
-        setShoppingList(newShop || []);
+      // Refetch data to ensure UI is in sync
+      const { data: newInv } = await supabase.from('inventory').select('*');
+      const { data: newShop } = await supabase.from('shopping_list').select('*');
+      setInventory(newInv || []);
+      setShoppingList(newShop || []);
 
     } catch (error) {
-        console.error("Error processing recipe:", error);
+      console.error("Error processing recipe:", error);
     }
   };
+
 
   const handleBuyItem = async (item) => {
     await supabase.from('shopping_list').delete().eq('id', item.id);
@@ -183,3 +229,4 @@ export default function App() {
     </div>
   );
 }
+
