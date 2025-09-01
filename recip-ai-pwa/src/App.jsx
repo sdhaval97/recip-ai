@@ -91,17 +91,28 @@ export default function App() {
   };
 
   const handleSaveRecipe = async (recipe) => {
-    const { data, error } = await supabase.from('saved_recipes').insert([{
+    if (!session || !session.user) {
+      const error = new Error("User session not found. Cannot save recipe.");
+      console.error(error);
+      throw error;
+    }
+
+    const recipeToSave = {
       user_id: session.user.id,
       recipe_name: recipe.recipeName,
       ingredients: recipe.ingredients,
       instructions: recipe.instructions,
       is_vegetarian: recipe.isVegetarian
-    }]).select();
+    };
+    
+    const { data, error } = await supabase
+      .from('saved_recipes')
+      .insert([recipeToSave])
+      .select();
 
     if (error) {
-      console.error("Error saving recipe:", error);
-      throw error; // Re-throw the error to be caught by the caller
+      console.error("Supabase error saving recipe:", error.message);
+      throw error;
     } else if (data) {
       setSavedRecipes(prev => [...prev, data[0]]);
     }
