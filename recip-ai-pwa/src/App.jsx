@@ -91,6 +91,12 @@ export default function App() {
   };
 
   const handleSaveRecipe = async (recipe) => {
+    if (!recipe) {
+      const error = new Error("Invalid recipe data provided.");
+      console.error(error);
+      throw error;
+    }
+
     if (!session || !session.user) {
       const error = new Error("User session not found. Cannot save recipe.");
       console.error(error);
@@ -111,8 +117,9 @@ export default function App() {
       .select();
 
     if (error) {
+      const detailedError = new Error(`Supabase error: ${error.message}`);
       console.error("Supabase error saving recipe:", error.message);
-      throw error;
+      throw detailedError;
     } else if (data) {
       setSavedRecipes(prev => [...prev, data[0]]);
     }
