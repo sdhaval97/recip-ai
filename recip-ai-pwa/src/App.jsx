@@ -101,6 +101,7 @@ export default function App() {
 
     if (error) {
       console.error("Error saving recipe:", error);
+      throw error; // Re-throw the error to be caught by the caller
     } else if (data) {
       setSavedRecipes(prev => [...prev, data[0]]);
     }
@@ -123,13 +124,11 @@ export default function App() {
           const invInBase = convertToBaseUnit(invItem.quantity, invItem.unit);
           const usedInBase = convertToBaseUnit(usedIng.quantity, usedIng.unit);
 
-          // Ensure units are compatible before subtracting
           if (invInBase.baseUnit === usedInBase.baseUnit) {
             const remainingInBase = invInBase.quantity - usedInBase.quantity;
 
-            if (remainingInBase <= 0.001) { // Use a small threshold for floating point inaccuracies
+            if (remainingInBase <= 0.001) {
               inventoryDeletions.push(invItem.id);
-              // Check if item is already in the shopping list to avoid duplicates
               if (!shoppingList.find(shopItem => shopItem.name.toLowerCase() === invItem.name.toLowerCase())) {
                   shoppingListAdditions.push({
                     name: invItem.name,
@@ -140,7 +139,6 @@ export default function App() {
                   });
               }
             } else {
-              // Convert back to original unit before updating
               const remainingInOriginalUnit = remainingInBase / (conversionRates[invItem.unit] || 1);
               inventoryUpdates.push({ ...invItem, quantity: remainingInOriginalUnit });
             }
@@ -150,7 +148,6 @@ export default function App() {
         }
       }
 
-      // Perform batch operations
       if (inventoryDeletions.length > 0) {
         await supabase.from('inventory').delete().in('id', inventoryDeletions);
       }
@@ -161,12 +158,11 @@ export default function App() {
         await supabase.from('inventory').upsert(inventoryUpdates);
       }
 
-      // Refetch data to ensure UI is in sync
       const { data: newInv } = await supabase.from('inventory').select('*');
       const { data: newShop } = await supabase.from('shopping_list').select('*');
       setInventory(newInv || []);
       setShoppingList(newShop || []);
-      setGeneratedRecipes([]); // Clear recipes after cooking
+      setGeneratedRecipes([]);
 
     } catch (error) {
       console.error("Error processing recipe:", error);
@@ -194,7 +190,7 @@ export default function App() {
     
     switch (activePage) {
       case 'inventory': return <InventoryPage inventory={inventory} onAddItem={addItemToInventory} onDeleteItem={deleteItemFromInventory} unitSystem={unitSystem} />;
-      case 'recipes': return <RecipePage inventory={inventory} onCookRecipe={handleCookRecipe} onSaveRecipe={handleSaveRecipe} generatedRecipes={generatedRecipes} setGeneratedRecipes={setGeneratedRecipes} />;
+      case 'recipes': return <RecipePage inventory={inventory} onCookRecipe={handleCookRecipe} onSaveRecipe={handleSaveRecipe} generatedRecipes={generatedRecipes} setGeneratedRecipes={setGeneratedRecipes} savedRecipes={savedRecipes} />;
       case 'shopping-list': return <ShoppingListPage shoppingList={shoppingList} onBuyItem={handleBuyItem} />;
       case 'favorites': return <FavoritesPage savedRecipes={savedRecipes} onDeleteFavorite={handleDeleteFavorite} />;
       case 'profile': return <ProfilePage session={session} unitSystem={unitSystem} onUnitSystemChange={setUnitSystem} />;
