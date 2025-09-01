@@ -44,6 +44,7 @@ export default function App() {
   const [inventory, setInventory] = useState([]);
   const [shoppingList, setShoppingList] = useState([]);
   const [savedRecipes, setSavedRecipes] = useState([]);
+  const [generatedRecipes, setGeneratedRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [unitSystem, setUnitSystem] = useState('metric');
 
@@ -165,6 +166,7 @@ export default function App() {
       const { data: newShop } = await supabase.from('shopping_list').select('*');
       setInventory(newInv || []);
       setShoppingList(newShop || []);
+      setGeneratedRecipes([]); // Clear recipes after cooking
 
     } catch (error) {
       console.error("Error processing recipe:", error);
@@ -192,7 +194,7 @@ export default function App() {
     
     switch (activePage) {
       case 'inventory': return <InventoryPage inventory={inventory} onAddItem={addItemToInventory} onDeleteItem={deleteItemFromInventory} unitSystem={unitSystem} />;
-      case 'recipes': return <RecipePage inventory={inventory} onCookRecipe={handleCookRecipe} onSaveRecipe={handleSaveRecipe} />;
+      case 'recipes': return <RecipePage inventory={inventory} onCookRecipe={handleCookRecipe} onSaveRecipe={handleSaveRecipe} generatedRecipes={generatedRecipes} setGeneratedRecipes={setGeneratedRecipes} />;
       case 'shopping-list': return <ShoppingListPage shoppingList={shoppingList} onBuyItem={handleBuyItem} />;
       case 'favorites': return <FavoritesPage savedRecipes={savedRecipes} onDeleteFavorite={handleDeleteFavorite} />;
       case 'profile': return <ProfilePage session={session} unitSystem={unitSystem} onUnitSystemChange={setUnitSystem} />;
