@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { UtensilsCrossed, Sparkles, RefreshCw, ArrowLeft, Heart, Leaf, Beef } from 'lucide-react';
 
-export default function RecipePage({ inventory, onCookRecipe, onSaveRecipe }) {
-  const [recipes, setRecipes] = useState([]);
+export default function RecipePage({ inventory, onCookRecipe, onSaveRecipe, generatedRecipes, setGeneratedRecipes }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [preference, setPreference] = useState('surprise me');
@@ -21,7 +20,7 @@ export default function RecipePage({ inventory, onCookRecipe, onSaveRecipe }) {
     }
     setIsLoading(true);
     setError(null);
-    setRecipes([]);
+    setGeneratedRecipes([]);
 
     let finalPreference = preference;
     if (preference === 'non-veg' && !hasNonVegIngredients()) {
@@ -79,7 +78,7 @@ export default function RecipePage({ inventory, onCookRecipe, onSaveRecipe }) {
       const result = await response.json();
       if (result.candidates && result.candidates[0].content.parts[0].text) {
         const parsedRecipes = JSON.parse(result.candidates[0].content.parts[0].text);
-        setRecipes(parsedRecipes);
+        setGeneratedRecipes(parsedRecipes);
       } else {
         throw new Error("Could not parse recipes from AI response.");
       }
@@ -94,7 +93,6 @@ export default function RecipePage({ inventory, onCookRecipe, onSaveRecipe }) {
   const handleDoneCooking = () => {
     onCookRecipe(selectedRecipe);
     setSelectedRecipe(null);
-    setRecipes([]);
   };
 
   const handleSaveRecipe = () => {
@@ -168,9 +166,9 @@ export default function RecipePage({ inventory, onCookRecipe, onSaveRecipe }) {
 
       {error && <p className="text-center text-red-500 mb-4">{error}</p>}
 
-      {recipes.length > 0 ? (
+      {generatedRecipes.length > 0 ? (
         <div className="space-y-4">
-          {recipes.map((recipe, index) => (
+          {generatedRecipes.map((recipe, index) => (
             <div key={index} className="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
               <div className="flex justify-between items-start">
                 <h4 className="text-lg font-bold text-green-700 capitalize">{recipe.recipeName}</h4>
@@ -201,3 +199,4 @@ export default function RecipePage({ inventory, onCookRecipe, onSaveRecipe }) {
     </div>
   );
 }
+
