@@ -72,9 +72,11 @@ export default function App() {
     }, [session, fetchData]);
 
     const addItemToInventory = async (item) => {
+        if (!session) return;
+        const itemWithUser = { ...item, user_id: session.user.id };
         const { data, error } = await supabase
             .from('inventory')
-            .insert([item])
+            .insert([itemWithUser])
             .select();
         if (error) {
             console.error('Error adding item:', error);
