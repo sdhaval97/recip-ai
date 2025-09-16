@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PlusCircle, Trash2, Edit, Save, X } from 'lucide-react';
+import { PlusCircle, Trash2, Edit, Save, X, List } from 'lucide-react';
 
 const METRIC_UNITS = {
     Weight: ['g', 'kg'],
